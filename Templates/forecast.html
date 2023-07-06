@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Forecast Results</title>
+  <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+</head>
+<body>
+  <div id="chartContainer1" style="height: 300px;"></div>
+  <div id="chartContainer2" style="height: 300px;"></div>
+  <div id="chartContainer3" style="height: 300px;"></div>
+
+  <script>
+    var dates = {{ dates|tojson }};
+    var forecastedValues = {{ forecasted_values|tojson }};
+
+    // Prepare the data points for the chart
+    var dataPoints = [];
+    for (var i = 0; i < dates.length; i++) {
+      dataPoints.push({ x: dates[i], y: forecastedValues[i] });
+    }
+
+    // Create the chart
+    var chart = new CanvasJS.Chart("chartContainer", {
+      animationEnabled: true,
+      theme: "light2",
+      title: {
+        text: "Forecasted Data"
+      },
+      axisX: {
+        title: "Date"
+      },
+      axisY: {
+        title: "Forecasted Values"
+      },
+      data: [{
+        type: "line",
+        dataPoints: dataPoints
+      }]
+    });
+
+    // Render the chart
+    chart.render();
+    // ...
+  </script>
+</body>
+</html>
+
