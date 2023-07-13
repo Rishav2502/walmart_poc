@@ -3,19 +3,24 @@ import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from keras.models import Sequential
-from keras.layers import LSTM, Dense,Dropout
+from tensorflow.python.keras.models import load_model
+from tensorflow.python.keras import Sequential
+from keras.layers import LSTM, Dense, Dropout
 from sklearn.preprocessing import MinMaxScaler
+from tensorflow.python.keras.models import save_model, load_model
+global plot_no
+plot_no = 1
+
 
 app = Flask(__name__)
 
-with open('C:/Users/Admin/PycharmProject/walmart_poc/pickle_files/list_of_models_lstm.pkl', 'rb') as file:
-  models1 = pickle.load(file)
+#with open('C:/Users/Admin/PycharmProject/walmart_poc/pickle_files/list_of_models_1.pkl', 'rb') as file:
+  #model = pickle.load(file)
+model = load_model('C:/Users/Admin/PycharmProject/walmart_poc/lstm_models/store_44_model.h5', compile=False)
 with open('C:/Users/Admin/PycharmProject/walmart_poc/pickle_files/time_cov.pkl', 'rb') as file:
   time_cov = pickle.load(file)
 with open('C:/Users/Admin/PycharmProject/walmart_poc/pickle_files/list_of_store_specific.pkl', 'rb') as file:
   list_of_store_specific = pickle.load(file)
-
 with open('C:/Users/Admin/PycharmProject/walmart_poc/pickle_files/list_of_train_data.pkl', 'rb') as file:
   list_of_train_data = pickle.load(file)
 with open('C:/Users/Admin/PycharmProject/walmart_poc/pickle_files/list_of_test_data.pkl', 'rb') as file:
@@ -52,7 +57,7 @@ def prediction_fn(store_nbr,n_steps,promotion_weightage):
   remaining_data = final_df.iloc[train_size:, :]*promotion_weightage
   remaining_data_scaled = scaler.transform(remaining_data)
   X_future, y_future = create_sequences(remaining_data_scaled, sequence_length)
-  predictions = models1[store_nbr-1].predict(X_future)
+  predictions = model.predict(X_future)
   predictions_df=pd.DataFrame(columns=final_df.columns)
   for i in range(0,len(predictions_df.columns)):
     if i<33:
@@ -77,8 +82,9 @@ def prediction_fn(store_nbr,n_steps,promotion_weightage):
   mape_df['MAPE']=mape
   return train_data,actuals,rescaled_predictions.iloc[:n_steps,:]
 
-def plotting(store_nbr,n_steps,promotion_weightage,product_name):
-    train,actuals,prediction1=prediction_fn(store_nbr,n_steps,promotion_weightage)
+def plotting(store_nbr,n_steps,promotion_weightage, product_name):
+    global plot_no
+    train,actuals,prediction1=prediction_fn(store_nbr, n_steps, promotion_weightage)
     # Calculate the upper and lower bounds for the interval
     interval = prediction1['sales_'+product_name] * (14.84 / 100)
 
@@ -100,27 +106,35 @@ def plotting(store_nbr,n_steps,promotion_weightage,product_name):
 
     # Adding legend
     plt.legend()
-    plt.savefig("static/prediction1.png")
-    return None
+    plot_no = plot_no + 1
+    image_path = plt.savefig(f"C:/Users/Admin/PycharmProject/walmart_poc/static/prediction{plot_no}.png")
+    return image_path
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index1.html')
 
-@app.route('/forecast', methods=['POST'])
+@app.route('/plot', methods=['POST'])
 def forecast():
-    store_no = request.form['storeNo']
-    forecast_days = request.form['forecastDays']
-    promotion1 = request.form['promotion1']
-    promotion2 = request.form['promotion2']
-    promotion3 = request.form['promotion3']
+    store_no = int(request.form['storeNo'])
+    forecast_days = int(request.form['forecastDays'])
+    promotion = float(request.form['promotion'])
+    #promotion2 = float(request.form['promotion2'])
+    #promotion3 = float(request.form['promotion3'])
     product_family = request.form.getlist('productFamily')
-    plotting(store_no,forecast_days,promotion1,product_family)
-    # Perform the forecast calculation and obtain the forecast data
+    print(store_no)
+    print(forecast_days)
+    #print(promotion)
+    #print(promotion2)
+    #print(promotion3)
 
-    return render_template('forecast.html', store_no=store_no, forecast_days=forecast_days,
-                           promotion1=promotion1, promotion2=promotion2, promotion3=promotion3,
-                           product_family=product_family)
+
+    chart = plotting(store_no, forecast_days, promotion, product_family[0])
+    #Perform the forecast calculation and obtain the forecast data
+
+    #return render_template('forecast1.html', store_no=store_no, forecast_days=forecast_days, promotion=promotion, product_family=product_family)
+
+    return render_template('plot.html', image_path = chart)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
